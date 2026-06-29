@@ -1,0 +1,13 @@
+node_modules/@protobufjs/fetch/tests/index.js
+node_modules/protobufjs/src/root.js
+node_modules/protobufjs/src/util.js
+node_modules/p-retry/readme.md
+node_modules/node-fetch/README.md
+node_modules/formdata-polyfill/FormData.js
+node_modules/formdata-polyfill/formdata.min.js
+node_modules/firebase/firebase-compat.js.map
+node_modules/firebase/firebase-functions-compat.js.map
+node_modules/firebase/firebase-functions.js.map
+node_modules/react-router/docs/how-to/instrumentation.md
+node_modules/tesseract.js/src/worker-script/node/index.js
+node_modules/tesseract.js/src/worker/node/loadImage.js

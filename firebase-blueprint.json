@@ -1,0 +1,28 @@
+{
+  "rulesVersion": "2",
+  "collections": [
+    {
+      "name": "users",
+      "description": "Stores user profiles, license statuses, and device bindings.",
+      "schema": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "name": { "type": "string" },
+        "address": { "type": "string" },
+        "phone": { "type": "string" },
+        "role": { "type": "string", "description": "'admin' or 'consumer'" },
+        "status": { "type": "string", "description": "'pending', 'active', or 'revoked'" },
+        "activeDeviceId": { "type": "string" },
+        "deviceLabel": { "type": "string" },
+        "boundAt": { "type": "timestamp" },
+        "createdAt": { "type": "timestamp" }
+      },
+      "securityRules": {
+        "read": "request.auth != null && (request.auth.uid == uid || resource.data.email == request.auth.token.email || request.auth.token.email == 'mondal.saikat185@gmail.com')",
+        "create": "request.auth != null && (request.auth.uid == uid || request.auth.token.email == 'mondal.saikat185@gmail.com')",
+        "update": "request.auth != null && (request.auth.token.email == 'mondal.saikat185@gmail.com' || (request.auth.uid == uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['activeDeviceId', 'deviceLabel', 'boundAt']) && resource.data.status == 'active' && (resource.data.activeDeviceId == null || resource.data.activeDeviceId == '') && request.resource.data.activeDeviceId is string && request.resource.data.activeDeviceId.size() > 0))",
+        "delete": "request.auth != null && (request.auth.token.email == 'mondal.saikat185@gmail.com' || resource.data.email == request.auth.token.email)"
+      }
+    }
+  ]
+}
