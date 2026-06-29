@@ -6,6 +6,7 @@ import { UserProfile } from './types';
 import LoginScreen from './components/LoginScreen';
 import AdminPanel from './components/AdminPanel';
 import Extractor from './components/Extractor';
+import { InstallPWA } from './components/InstallPWA';
 import { Loader2, Sun, Moon } from 'lucide-react';
 
 function getDeviceId() {
@@ -333,6 +334,7 @@ export default function App() {
       >
         {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
       </button>
+      <InstallPWA />
 
       {/* Render view based on state */}
       {(() => {

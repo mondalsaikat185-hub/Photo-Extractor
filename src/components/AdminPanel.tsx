@@ -159,9 +159,22 @@ export default function AdminPanel({ profile, onLogOut }: AdminPanelProps) {
       confirmStyle: newStatus === 'active' ? 'success' : 'danger',
       onConfirm: async () => {
         try {
-          await updateDoc(doc(db, 'users', uid), { status: newStatus });
+          // If approving user, also auto-approve all their pending devices
+          let updateData: any = { status: newStatus };
+          
+          if (newStatus === 'active') {
+            const userDoc = users.find(u => u.uid === uid);
+            if (userDoc && userDoc.devices) {
+              const updatedDevices = userDoc.devices.map(d => ({ ...d, status: 'approved' }));
+              updateData.devices = updatedDevices;
+              updateData.deviceIds = updatedDevices.map(d => d.id);
+            }
+          }
+          
+          await updateDoc(doc(db, 'users', uid), updateData);
           fetchUsers();
           setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+          showToast(`ব্যবহারকারীকে সফলভাবে ${actionText} করা হয়েছে।`);
         } catch (e) {
           showToast('স্ট্যাটাস আপডেট করতে সমস্যা হয়েছে / Error updating user status');
         }
