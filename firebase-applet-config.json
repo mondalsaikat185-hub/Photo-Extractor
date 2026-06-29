@@ -1,10 +1,10 @@
 {
-  "projectId": "fifth-clone-b71nt",
-  "appId": "1:749623737196:web:4dbd85adc0b3a1067dd149",
-  "apiKey": "AIzaSyDsXFAvPEHUECzwG8foTdGGKX9nA3gddpI",
-  "authDomain": "fifth-clone-b71nt.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-ae5aa1ab-8a15-474a-a3ea-2a1dbde5bf7b",
-  "storageBucket": "fifth-clone-b71nt.firebasestorage.app",
-  "messagingSenderId": "749623737196",
-  "measurementId": ""
+  "projectId": "text-photo-extractor",
+  "appId": "1:153944828202:web:0713587539761ec4e89653",
+  "apiKey": "AIzaSyAEAHip91vwCc9DFq9cTLlzq57aW0W7wx8",
+  "authDomain": "text-photo-extractor.firebaseapp.com",
+  "firestoreDatabaseId": "(default)",
+  "storageBucket": "text-photo-extractor.firebasestorage.app",
+  "messagingSenderId": "153944828202",
+  "measurementId": "G-5H9WC5YBEB"
 }
