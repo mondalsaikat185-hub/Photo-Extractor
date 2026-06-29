@@ -32,11 +32,8 @@ export default function App() {
   });
 
   // Profile completion fields
-  const [nameBg, setNameBg] = useState('');
   const [nameEn, setNameEn] = useState('');
-  const [addressBg, setAddressBg] = useState('');
   const [addressEn, setAddressEn] = useState('');
-  const [phoneBg, setPhoneBg] = useState('');
   const [phoneEn, setPhoneEn] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
 
@@ -238,8 +235,8 @@ export default function App() {
             const currentDeviceStatus = data.devices?.find(d => d.id === deviceId)?.status || 'pending';
             
             if (currentDeviceStatus !== 'approved') {
-              setErrorMsg('আপনার এই ডিভাইসটি এখনও অনুমোদিত নয়। ডিভাইসটি ব্যবহারের অনুমতি পেতে অনুগ্রহ করে অ্যাডমিনের সাথে যোগাযোগ করুন। / This device is pending approval. Please contact the administrator to approve this device.');
-              await auth.signOut();
+              setUser(u);
+              setProfile({ ...data, status: 'device_pending' } as any);
               setLoading(false);
               return;
             }
@@ -290,29 +287,38 @@ export default function App() {
     if (!needsProfileCompletion) return;
     setSavingProfile(true);
     try {
+      const deviceId = getDeviceId();
+      const deviceLabel = navigator.userAgent.slice(0, 100);
       const newProfile: UserProfile = {
         uid: needsProfileCompletion.uid,
         email: needsProfileCompletion.email || '',
-        name: nameBg, // general fallback gets Bengali version
-        nameBg,
+        name: nameEn,
+        nameBg: nameEn,
         nameEn,
-        address: addressBg, // general fallback gets Bengali version
-        addressBg,
+        address: addressEn,
+        addressBg: addressEn,
         addressEn,
-        phone: phoneBg, // general fallback gets Bengali version
-        phoneBg,
+        phone: phoneEn,
+        phoneBg: phoneEn,
         phoneEn,
         role: 'consumer',
         status: 'pending',
-        activeDeviceId: '',
-        deviceLabel: '',
+        activeDeviceId: deviceId,
+        deviceLabel: deviceLabel,
+        devices: [{
+          id: deviceId,
+          label: deviceLabel,
+          boundAt: new Date().toISOString(),
+          status: 'pending'
+        }],
+        deviceIds: [deviceId],
         createdAt: new Date().toISOString()
       };
       await setDoc(doc(db, 'users', needsProfileCompletion.uid), newProfile);
       setNeedsProfileCompletion(null);
       setProfile(newProfile);
     } catch (err: any) {
-      alert('প্রোফাইল তৈরি ব্যর্থ হয়েছে / Profile completion failed: ' + err.message);
+      setErrorMsg('প্রোফাইল তৈরি ব্যর্থ হয়েছে / Profile completion failed: ' + err.message);
     }
     setSavingProfile(false);
   };
@@ -341,6 +347,19 @@ export default function App() {
         if (needsProfileCompletion) {
           return (
             <div className="min-h-screen flex flex-col items-center justify-center py-12 px-4 relative">
+               {errorMsg && (
+                 <div className="w-full max-w-lg mb-4 bg-red-50 dark:bg-red-950/25 text-red-800 dark:text-red-200 px-4 py-3 rounded-xl shadow-sm border border-red-100 dark:border-red-900/30 text-xs sm:text-sm flex justify-between items-start gap-2 relative">
+                   <div className="flex-1">
+                     {errorMsg}
+                   </div>
+                   <button 
+                     onClick={() => setErrorMsg('')}
+                     className="text-red-500 hover:text-red-700 dark:hover:text-red-300 font-bold ml-1 cursor-pointer shrink-0"
+                   >
+                     ✕
+                   </button>
+                 </div>
+               )}
               <div className="w-full max-w-lg p-8 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">অ্যাক্সেসের জন্য আবেদন করুন / Apply for Access</h2>
                 <p className="text-gray-500 dark:text-gray-400 mb-6 text-sm">
@@ -348,35 +367,19 @@ export default function App() {
                 </p>
                 
                 <form onSubmit={handleCompleteProfile} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">পুরো নাম (বাংলা) <span className="text-red-500">*</span></label>
-                      <input type="text" required value={nameBg} onChange={e => setNameBg(e.target.value)} placeholder="যেমন: সাইকত মন্ডল" className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Full Name (English) <span className="text-red-500">*</span></label>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">পুরো নাম / Full Name <span className="text-red-500">*</span></label>
                       <input type="text" required value={nameEn} onChange={e => setNameEn(e.target.value)} placeholder="e.g. Saikat Mondal" className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm" />
                     </div>
-                  </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ঠিকানা (বাংলা) <span className="text-red-500">*</span></label>
-                      <input type="text" required value={addressBg} onChange={e => setAddressBg(e.target.value)} placeholder="যেমন: ঢাকা, বাংলাদেশ" className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Address (English) <span className="text-red-500">*</span></label>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ঠিকানা / Address <span className="text-red-500">*</span></label>
                       <input type="text" required value={addressEn} onChange={e => setAddressEn(e.target.value)} placeholder="e.g. Dhaka, Bangladesh" className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm" />
                     </div>
-                  </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ফোন নম্বর (বাংলা) <span className="text-red-500">*</span></label>
-                      <input type="text" required value={phoneBg} onChange={e => setPhoneBg(e.target.value)} placeholder="যেমন: ০১৭১২৩৪৫৬৭৮" className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-mono" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone Number (English) <span className="text-red-500">*</span></label>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ফোন নম্বর / Phone Number <span className="text-red-500">*</span></label>
                       <input type="tel" required value={phoneEn} onChange={e => setPhoneEn(e.target.value)} placeholder="e.g. +8801712345678" className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-mono" />
                     </div>
                   </div>
@@ -441,6 +444,18 @@ export default function App() {
               <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 text-center max-w-md">
                  <h2 className="text-2xl font-bold text-yellow-600 mb-4">অপেক্ষমান অনুমোদন / Awaiting Approval</h2>
                  <p className="text-gray-600 dark:text-gray-400 mb-8">আপনার আবেদনটি গ্রহণ করা হয়েছে। অ্যাডমিন আপনার অ্যাকাউন্টটি অনুমোদন করার পর আপনি সফ্টওয়্যারটি ব্যবহার করতে পারবেন। / Your application has been received. You will be able to use the software once approved by the admin.</p>
+                 <button onClick={handleLogOut} className="w-full px-6 py-2.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg font-medium text-gray-700 dark:text-gray-200 transition-colors text-sm">লগ আউট / Log Out</button>
+              </div>
+            </div>
+          );
+        }
+
+        if (profile?.status === 'device_pending' as any) {
+          return (
+            <div className="min-h-screen flex flex-col items-center justify-center p-6">
+              <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 text-center max-w-md animate-fade-in">
+                 <h2 className="text-2xl font-bold text-yellow-600 mb-4">নতুন ডিভাইস অপেক্ষমান / New Device Pending</h2>
+                 <p className="text-gray-600 dark:text-gray-400 mb-8">আপনার এই নতুন ডিভাইসটি এখনও অনুমোদিত নয়। ডিভাইসটি ব্যবহারের অনুমতি পেতে অনুগ্রহ করে অ্যাডমিনের সাথে যোগাযোগ করুন। / This new device is pending approval. Please contact the administrator to approve this device.</p>
                  <button onClick={handleLogOut} className="w-full px-6 py-2.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg font-medium text-gray-700 dark:text-gray-200 transition-colors text-sm">লগ আউট / Log Out</button>
               </div>
             </div>

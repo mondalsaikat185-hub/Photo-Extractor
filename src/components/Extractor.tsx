@@ -146,9 +146,7 @@ export default function Extractor({ profile, setProfile, onLogOut }: ExtractorPr
   });
   
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const [editNameBg, setEditNameBg] = useState('');
   const [editNameEn, setEditNameEn] = useState('');
-  const [editAddressBg, setEditAddressBg] = useState('');
   const [editAddressEn, setEditAddressEn] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
 
@@ -173,10 +171,8 @@ export default function Extractor({ profile, setProfile, onLogOut }: ExtractorPr
 
   const openProfileModal = () => {
     if (profile) {
-      setEditNameBg(profile.nameBg || profile.name || '');
-      setEditNameEn(profile.nameEn || '');
-      setEditAddressBg(profile.addressBg || profile.address || '');
-      setEditAddressEn(profile.addressEn || '');
+      setEditNameEn(profile.nameEn || profile.name || profile.nameBg || '');
+      setEditAddressEn(profile.addressEn || profile.address || profile.addressBg || '');
       setShowProfileModal(true);
     }
   };
@@ -188,19 +184,19 @@ export default function Extractor({ profile, setProfile, onLogOut }: ExtractorPr
     try {
       const docRef = doc(db, 'users', profile.uid);
       const updatedFields = {
-        name: editNameBg, // fallback is Bengali version
-        nameBg: editNameBg,
+        name: editNameEn,
+        nameBg: editNameEn,
         nameEn: editNameEn,
-        address: editAddressBg, // fallback is Bengali version
-        addressBg: editAddressBg,
+        address: editAddressEn,
+        addressBg: editAddressEn,
         addressEn: editAddressEn
       };
       await updateDoc(docRef, updatedFields);
       setProfile({ ...profile, ...updatedFields });
       setShowProfileModal(false);
-      alert('প্রোফাইল সফলভাবে আপডেট করা হয়েছে। / Profile updated successfully.');
+      // Removed alert as per iframe constraints
     } catch (err: any) {
-      alert('প্রোফাইল আপডেট ব্যর্থ হয়েছে / Profile update failed: ' + err.message);
+      console.error('Profile update failed:', err);
     }
     setSavingProfile(false);
   };
@@ -574,24 +570,16 @@ export default function Extractor({ profile, setProfile, onLogOut }: ExtractorPr
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">পুরো নাম (বাংলা) <span className="text-red-500">*</span></label>
-                  <input type="text" required value={editNameBg} onChange={(e) => setEditNameBg(e.target.value)} className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Full Name (English) <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">পুরো নাম / Full Name <span className="text-red-500">*</span></label>
                   <input type="text" required value={editNameEn} onChange={(e) => setEditNameEn(e.target.value)} className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm" />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ঠিকানা (বাংলা) <span className="text-red-500">*</span></label>
-                  <input type="text" required value={editAddressBg} onChange={(e) => setEditAddressBg(e.target.value)} className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Address (English) <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ঠিকানা / Address <span className="text-red-500">*</span></label>
                   <input type="text" required value={editAddressEn} onChange={(e) => setEditAddressEn(e.target.value)} className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm" />
                 </div>
               </div>

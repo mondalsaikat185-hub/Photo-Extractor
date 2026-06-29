@@ -69,11 +69,8 @@ export default function AdminPanel({ profile, onLogOut }: AdminPanelProps) {
 
   // Editing state
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
-  const [editNameBg, setEditNameBg] = useState('');
   const [editNameEn, setEditNameEn] = useState('');
-  const [editAddressBg, setEditAddressBg] = useState('');
   const [editAddressEn, setEditAddressEn] = useState('');
-  const [editPhoneBg, setEditPhoneBg] = useState('');
   const [editPhoneEn, setEditPhoneEn] = useState('');
   const [savingUser, setSavingUser] = useState(false);
 
@@ -89,14 +86,34 @@ export default function AdminPanel({ profile, onLogOut }: AdminPanelProps) {
   // Add User State
   const [showAddModal, setShowAddModal] = useState(false);
   const [addEmail, setAddEmail] = useState('');
-  const [addNameBg, setAddNameBg] = useState('');
   const [addNameEn, setAddNameEn] = useState('');
-  const [addAddressBg, setAddAddressBg] = useState('');
   const [addAddressEn, setAddAddressEn] = useState('');
-  const [addPhoneBg, setAddPhoneBg] = useState('');
   const [addPhoneEn, setAddPhoneEn] = useState('');
   const [addStatus, setAddStatus] = useState<'active' | 'pending'>('active');
   const [creatingUser, setCreatingUser] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  // General Confirmation Modal State
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    confirmText: string;
+    confirmStyle: 'success' | 'danger' | 'warning';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    confirmText: 'Confirm',
+    confirmStyle: 'success'
+  });
 
   const fetchUsers = async () => {
     try {
@@ -130,31 +147,52 @@ export default function AdminPanel({ profile, onLogOut }: AdminPanelProps) {
     fetchLogs();
   }, []);
 
-  const handleUpdateStatus = async (uid: string, newStatus: 'active' | 'revoked') => {
+  const handleUpdateStatus = (uid: string, newStatus: 'active' | 'revoked') => {
     const actionText = newStatus === 'active' ? 'অনুমোদন' : 'বাতিল';
-    if (!confirm(`আপনি কি নিশ্চিতভাবে এই ব্যবহারকারীকে ${actionText} করতে চান? (Are you sure you want to change status to ${newStatus}?)`)) return;
-    try {
-      await updateDoc(doc(db, 'users', uid), { status: newStatus });
-      fetchUsers();
-    } catch (e) {
-      alert('স্ট্যাটাস আপডেট করতে সমস্যা হয়েছে / Error updating user status');
-    }
+    const actionTextEn = newStatus === 'active' ? 'approve' : 'block';
+    
+    setConfirmDialog({
+      isOpen: true,
+      title: `${actionText} নিশ্চিত করুন / Confirm ${newStatus === 'active' ? 'Approval' : 'Block'}`,
+      message: `আপনি কি নিশ্চিতভাবে এই ব্যবহারকারীকে ${actionText} করতে চান? / Are you sure you want to ${actionTextEn} this user?`,
+      confirmText: newStatus === 'active' ? 'অনুমোদন করুন / Approve' : 'বাতিল করুন / Block',
+      confirmStyle: newStatus === 'active' ? 'success' : 'danger',
+      onConfirm: async () => {
+        try {
+          await updateDoc(doc(db, 'users', uid), { status: newStatus });
+          fetchUsers();
+          setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+        } catch (e) {
+          showToast('স্ট্যাটাস আপডেট করতে সমস্যা হয়েছে / Error updating user status');
+        }
+      }
+    });
   };
 
-  const handleResetDevice = async (uid: string) => {
-    if (!confirm('আপনি কি নিশ্চিতভাবে এই ব্যবহারকারীর সমস্ত ডিভাইস বাইন্ডিং রিসেট করতে চান? (Are you sure you want to reset all device bindings for this user?)')) return;
-    try {
-      await updateDoc(doc(db, 'users', uid), { 
-        activeDeviceId: '', 
-        deviceLabel: '', 
-        devices: [], 
-        deviceIds: [] 
-      });
-      fetchUsers();
-      alert('ডিভাইস রিসেট সফল হয়েছে / Device reset successful.');
-    } catch (e) {
-      alert('ডিভাইস রিসেট করতে সমস্যা হয়েছে / Error resetting device');
-    }
+  const handleResetDevice = (uid: string) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'ডিভাইস রিসেট নিশ্চিত করুন / Confirm Device Reset',
+      message: 'আপনি কি নিশ্চিতভাবে এই ব্যবহারকারীর সমস্ত ডিভাইস বাইন্ডিং রিসেট করতে চান? / Are you sure you want to reset all device bindings for this user?',
+      confirmText: 'রিসেট করুন / Reset Devices',
+      confirmStyle: 'warning',
+      onConfirm: async () => {
+        try {
+          await updateDoc(doc(db, 'users', uid), { 
+            activeDeviceId: '', 
+            deviceLabel: '', 
+            devices: [], 
+            deviceIds: [] 
+          });
+          fetchUsers();
+          setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+          // Note: using alert here as a fallback notification
+          setTimeout(() => showToast('ডিভাইস রিসেট সফল হয়েছে / Device reset successful.'), 100);
+        } catch (e) {
+          showToast('ডিভাইস রিসেট করতে সমস্যা হয়েছে / Error resetting device');
+        }
+      }
+    });
   };
 
   const startEditDevice = (user: UserProfile, index: number) => {
@@ -211,9 +249,9 @@ export default function AdminPanel({ profile, onLogOut }: AdminPanelProps) {
       setEditingDeviceUser(null);
       setEditingDeviceIndex(null);
       fetchUsers();
-      alert('ডিভাইস সফলভাবে আপডেট করা হয়েছে। / Device updated successfully.');
+      showToast('ডিভাইস সফলভাবে আপডেট করা হয়েছে। / Device updated successfully.');
     } catch (err: any) {
-      alert('ডিভাইস আপডেট করতে ব্যর্থ হয়েছে / Failed to update device: ' + err.message);
+      showToast('ডিভাইস আপডেট করতে ব্যর্থ হয়েছে / Failed to update device: ' + err.message);
     } finally {
       setSavingDevice(false);
     }
@@ -254,9 +292,9 @@ export default function AdminPanel({ profile, onLogOut }: AdminPanelProps) {
       setDeletingDeviceUser(null);
       setDeletingDeviceIndex(null);
       fetchUsers();
-      alert('ডিভাইস স্থায়ীভাবে মুছে ফেলা হয়েছে। / Device has been permanently deleted.');
+      showToast('ডিভাইস স্থায়ীভাবে মুছে ফেলা হয়েছে। / Device has been permanently deleted.');
     } catch (err: any) {
-      alert('ডিভাইস মুছতে ব্যর্থ হয়েছে / Failed to delete device: ' + err.message);
+      showToast('ডিভাইস মুছতে ব্যর্থ হয়েছে / Failed to delete device: ' + err.message);
     } finally {
       setSavingDevice(false);
     }
@@ -279,9 +317,9 @@ export default function AdminPanel({ profile, onLogOut }: AdminPanelProps) {
       });
 
       fetchUsers();
-      alert('ডিভাইস সফলভাবে অনুমোদন করা হয়েছে। / Device approved successfully.');
+      showToast('ডিভাইস সফলভাবে অনুমোদন করা হয়েছে। / Device approved successfully.');
     } catch (err: any) {
-      alert('ডিভাইস অনুমোদন করতে ব্যর্থ হয়েছে / Failed to approve device: ' + err.message);
+      showToast('ডিভাইস অনুমোদন করতে ব্যর্থ হয়েছে / Failed to approve device: ' + err.message);
     }
   };
 
@@ -295,7 +333,7 @@ export default function AdminPanel({ profile, onLogOut }: AdminPanelProps) {
       const qOtherSnap = await getDocs(qOther);
       const otherUsers = qOtherSnap.docs.filter(d => d.id !== user.uid);
       if (otherUsers.length > 0) {
-        alert('এই ডিভাইস আইডিটি অন্য ইমেইল অ্যাকাউন্টের সাথে নিবন্ধিত আছে! / This Device ID is already registered to another email account!');
+        showToast('এই ডিভাইস আইডিটি অন্য ইমেইল অ্যাকাউন্টের সাথে নিবন্ধিত আছে! / This Device ID is already registered to another email account!');
         return;
       }
     } catch (e) {
@@ -333,20 +371,17 @@ export default function AdminPanel({ profile, onLogOut }: AdminPanelProps) {
       });
 
       fetchUsers();
-      alert('ডিভাইস সফলভাবে যুক্ত করা হয়েছে। / Device added successfully.');
+      showToast('ডিভাইস সফলভাবে যুক্ত করা হয়েছে। / Device added successfully.');
     } catch (err: any) {
-      alert('ডিভাইস যুক্ত করতে ব্যর্থ হয়েছে / Failed to add device: ' + err.message);
+      showToast('ডিভাইস যুক্ত করতে ব্যর্থ হয়েছে / Failed to add device: ' + err.message);
     }
   };
 
   const startEditUser = (user: UserProfile) => {
     setEditingUser(user);
-    setEditNameBg(user.nameBg || user.name || '');
-    setEditNameEn(user.nameEn || '');
-    setEditAddressBg(user.addressBg || user.address || '');
-    setEditAddressEn(user.addressEn || '');
-    setEditPhoneBg(user.phoneBg || user.phone || '');
-    setEditPhoneEn(user.phoneEn || '');
+    setEditNameEn(user.nameEn || user.name || '');
+    setEditAddressEn(user.addressEn || user.address || '');
+    setEditPhoneEn(user.phoneEn || user.phone || '');
   };
 
   const saveEditedUser = async (e: React.FormEvent) => {
@@ -356,21 +391,21 @@ export default function AdminPanel({ profile, onLogOut }: AdminPanelProps) {
     try {
       const userRef = doc(db, 'users', editingUser.uid);
       await updateDoc(userRef, {
-        name: editNameBg, // fallback is Bengali version
-        nameBg: editNameBg,
+        name: editNameEn,
+        nameBg: editNameEn,
         nameEn: editNameEn,
-        address: editAddressBg, // fallback is Bengali version
-        addressBg: editAddressBg,
+        address: editAddressEn,
+        addressBg: editAddressEn,
         addressEn: editAddressEn,
-        phone: editPhoneBg, // fallback is Bengali version
-        phoneBg: editPhoneBg,
+        phone: editPhoneEn,
+        phoneBg: editPhoneEn,
         phoneEn: editPhoneEn
       });
       setEditingUser(null);
       fetchUsers();
-      alert('ব্যবহারকারীর তথ্য সফলভাবে আপডেট করা হয়েছে। / User details updated successfully.');
+      showToast('ব্যবহারকারীর তথ্য সফলভাবে আপডেট করা হয়েছে। / User details updated successfully.');
     } catch (err: any) {
-      alert('তথ্য আপডেট করতে ব্যর্থ হয়েছে / Failed to update user: ' + err.message);
+      showToast('তথ্য আপডেট করতে ব্যর্থ হয়েছে / Failed to update user: ' + err.message);
     }
     setSavingUser(false);
   };
@@ -382,14 +417,14 @@ export default function AdminPanel({ profile, onLogOut }: AdminPanelProps) {
     try {
       await addDoc(collection(db, 'users'), {
         email: addEmail.trim().toLowerCase(),
-        name: addNameBg,
-        nameBg: addNameBg,
+        name: addNameEn,
+        nameBg: addNameEn,
         nameEn: addNameEn,
-        address: addAddressBg,
-        addressBg: addAddressBg,
+        address: addAddressEn,
+        addressBg: addAddressEn,
         addressEn: addAddressEn,
-        phone: addPhoneBg,
-        phoneBg: addPhoneBg,
+        phone: addPhoneEn,
+        phoneBg: addPhoneEn,
         phoneEn: addPhoneEn,
         role: 'consumer',
         status: addStatus,
@@ -397,19 +432,16 @@ export default function AdminPanel({ profile, onLogOut }: AdminPanelProps) {
       });
       // Clear fields
       setAddEmail('');
-      setAddNameBg('');
       setAddNameEn('');
-      setAddAddressBg('');
       setAddAddressEn('');
-      setAddPhoneBg('');
       setAddPhoneEn('');
       setAddStatus('active');
       setShowAddModal(false);
       fetchUsers();
-      alert('গ্রাহক সফলভাবে তৈরি করা হয়েছে! (User successfully pre-created!)');
+      showToast('গ্রাহক সফলভাবে তৈরি করা হয়েছে! / User successfully pre-created!');
     } catch (err: any) {
       console.error(err);
-      alert('গ্রাহক তৈরি করতে সমস্যা হয়েছে / Error creating user: ' + err.message);
+      showToast('গ্রাহক তৈরি করতে সমস্যা হয়েছে / Error creating user: ' + err.message);
     } finally {
       setCreatingUser(false);
     }
@@ -532,10 +564,7 @@ export default function AdminPanel({ profile, onLogOut }: AdminPanelProps) {
                     <tr key={user.uid} className="bg-white dark:bg-gray-800 hover:bg-gray-50/50 dark:hover:bg-gray-700/30 transition-colors">
                       <td className="px-6 py-4">
                         <div className="font-semibold text-gray-900 dark:text-gray-100">
-                          {user.nameBg || user.name || <span className="text-gray-400 italic font-normal">বাংলা নাম নেই</span>}
-                        </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                          {user.nameEn || <span className="text-gray-400 italic font-normal">English Name N/A</span>}
+                          {user.nameEn || user.name || user.nameBg || <span className="text-gray-400 italic font-normal">No Name / নাম নেই</span>}
                         </div>
                         <div className="text-xs text-indigo-600 dark:text-indigo-400 mt-1 font-mono">
                           {user.email}
@@ -544,18 +573,12 @@ export default function AdminPanel({ profile, onLogOut }: AdminPanelProps) {
                       <td className="px-6 py-4 space-y-1">
                         <div>
                           <div className="text-gray-800 dark:text-gray-200 font-medium text-xs sm:text-sm">
-                            {user.addressBg || user.address || <span className="text-gray-400 italic">ঠিকানা নেই</span>}
-                          </div>
-                          <div className="text-xs text-gray-400 dark:text-gray-500">
-                            {user.addressEn || <span className="text-gray-400 italic">English Address N/A</span>}
+                            {user.addressEn || user.address || user.addressBg || <span className="text-gray-400 italic">No Address / ঠিকানা নেই</span>}
                           </div>
                         </div>
-                        <div className="pt-1 border-t border-gray-100 dark:border-gray-700">
-                          <div className="text-gray-800 dark:text-gray-200 font-medium text-xs sm:text-sm">
-                            {user.phoneBg || user.phone || <span className="text-gray-400 italic">ফোন নেই</span>}
-                          </div>
-                          <div className="text-xs text-gray-400 dark:text-gray-500">
-                            {user.phoneEn || <span className="text-gray-400 italic">English Phone N/A</span>}
+                        <div className="pt-1 border-t border-gray-100 dark:border-gray-700 mt-1">
+                          <div className="text-gray-800 dark:text-gray-200 font-medium text-xs sm:text-sm font-mono">
+                            {user.phoneEn || user.phone || user.phoneBg || <span className="text-gray-400 italic">No Phone / ফোন নেই</span>}
                           </div>
                         </div>
                       </td>
@@ -839,39 +862,21 @@ export default function AdminPanel({ profile, onLogOut }: AdminPanelProps) {
                 </div>
 
                 {/* Name fields */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">পুরো নাম (বাংলা) <span className="text-red-500">*</span></label>
-                    <input type="text" required value={editNameBg} onChange={e => setEditNameBg(e.target.value)} className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Full Name (English) <span className="text-red-500">*</span></label>
-                    <input type="text" required value={editNameEn} onChange={e => setEditNameEn(e.target.value)} className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm" />
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">পুরো নাম / Full Name <span className="text-red-500">*</span></label>
+                  <input type="text" required value={editNameEn} onChange={e => setEditNameEn(e.target.value)} className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm" />
                 </div>
 
                 {/* Address fields */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ঠিকানা (বাংলা) <span className="text-red-500">*</span></label>
-                    <input type="text" required value={editAddressBg} onChange={e => setEditAddressBg(e.target.value)} className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Address (English) <span className="text-red-500">*</span></label>
-                    <input type="text" required value={editAddressEn} onChange={e => setEditAddressEn(e.target.value)} className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm" />
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ঠিকানা / Address <span className="text-red-500">*</span></label>
+                  <input type="text" required value={editAddressEn} onChange={e => setEditAddressEn(e.target.value)} className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm" />
                 </div>
 
                 {/* Phone fields */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ফোন নম্বর (বাংলা) <span className="text-red-500">*</span></label>
-                    <input type="text" required value={editPhoneBg} onChange={e => setEditPhoneBg(e.target.value)} className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone Number (English) <span className="text-red-500">*</span></label>
-                    <input type="tel" required value={editPhoneEn} onChange={e => setEditPhoneEn(e.target.value)} className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm" />
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ফোন নম্বর / Phone Number <span className="text-red-500">*</span></label>
+                  <input type="tel" required value={editPhoneEn} onChange={e => setEditPhoneEn(e.target.value)} className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm" />
                 </div>
               </div>
 
@@ -926,39 +931,21 @@ export default function AdminPanel({ profile, onLogOut }: AdminPanelProps) {
                 </div>
 
                 {/* Name fields */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">পুরো নাম (বাংলা) <span className="text-red-500">*</span></label>
-                    <input type="text" required value={addNameBg} onChange={e => setAddNameBg(e.target.value)} placeholder="যেমন: সাইকত মন্ডল" className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Full Name (English) <span className="text-red-500">*</span></label>
-                    <input type="text" required value={addNameEn} onChange={e => setAddNameEn(e.target.value)} placeholder="Saikat Mondal" className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm" />
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">পুরো নাম / Full Name <span className="text-red-500">*</span></label>
+                  <input type="text" required value={addNameEn} onChange={e => setAddNameEn(e.target.value)} placeholder="Saikat Mondal" className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm" />
                 </div>
 
                 {/* Address fields */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ঠিকানা (বাংলা) <span className="text-red-500">*</span></label>
-                    <input type="text" required value={addAddressBg} onChange={e => setAddAddressBg(e.target.value)} placeholder="যেমন: ঢাকা, বাংলাদেশ" className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Address (English) <span className="text-red-500">*</span></label>
-                    <input type="text" required value={addAddressEn} onChange={e => setAddAddressEn(e.target.value)} placeholder="Dhaka, Bangladesh" className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm" />
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ঠিকানা / Address <span className="text-red-500">*</span></label>
+                  <input type="text" required value={addAddressEn} onChange={e => setAddAddressEn(e.target.value)} placeholder="Dhaka, Bangladesh" className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm" />
                 </div>
 
                 {/* Phone fields */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ফোন নম্বর (বাংলা) <span className="text-red-500">*</span></label>
-                    <input type="text" required value={addPhoneBg} onChange={e => setAddPhoneBg(e.target.value)} placeholder="যেমন: ০১৭১২৩৪৫৬৭৮" className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone Number (English) <span className="text-red-500">*</span></label>
-                    <input type="tel" required value={addPhoneEn} onChange={e => setAddPhoneEn(e.target.value)} placeholder="+8801712345678" className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm" />
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ফোন নম্বর / Phone Number <span className="text-red-500">*</span></label>
+                  <input type="tel" required value={addPhoneEn} onChange={e => setAddPhoneEn(e.target.value)} placeholder="+8801712345678" className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm" />
                 </div>
 
                 {/* Initial Status */}
@@ -1109,6 +1096,60 @@ export default function AdminPanel({ profile, onLogOut }: AdminPanelProps) {
           </div>
         </div>
       )}
+      {/* General Confirmation Modal */}
+      {confirmDialog.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full shadow-2xl border border-gray-100 dark:border-gray-700 overflow-hidden transform transition-all animate-in fade-in zoom-in duration-200">
+            <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50/50 dark:bg-gray-800/50">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                {confirmDialog.title}
+              </h3>
+              <button 
+                onClick={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+                className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full text-gray-500 hover:text-gray-800 dark:hover:text-gray-300 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <p className="text-gray-800 dark:text-gray-200 text-sm">
+                {confirmDialog.message}
+              </p>
+            </div>
+
+            <div className="p-6 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-2 bg-gray-50/50 dark:bg-gray-800/50">
+              <button
+                type="button"
+                onClick={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+                className="px-4 py-2 bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 rounded-lg text-sm font-medium transition-colors"
+              >
+                না / Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDialog.onConfirm}
+                className={`flex items-center gap-1.5 px-4 py-2 text-white rounded-lg text-sm font-medium transition-colors font-bold cursor-pointer ${
+                  confirmDialog.confirmStyle === 'danger' ? 'bg-rose-600 hover:bg-rose-700' :
+                  confirmDialog.confirmStyle === 'warning' ? 'bg-amber-600 hover:bg-amber-700' :
+                  'bg-emerald-600 hover:bg-emerald-700'
+                }`}
+              >
+                {confirmDialog.confirmText}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-4 right-4 z-[60] bg-gray-900 text-white px-4 py-2.5 rounded-lg shadow-xl font-medium text-sm animate-fade-in flex items-center gap-2">
+          <CheckCircle size={16} className="text-emerald-400" />
+          {toastMessage}
+        </div>
+      )}
+
     </div>
   );
 }
