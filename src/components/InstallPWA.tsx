@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { Download } from 'lucide-react';
+import { Download, X } from 'lucide-react';
 
 export const InstallPWA = () => {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstallable, setIsInstallable] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIosPrompt, setIsIosPrompt] = useState(false);
+  const [isDismissed, setIsDismissed] = useState(() => {
+    return sessionStorage.getItem('pwa-install-dismissed') === 'true';
+  });
 
   useEffect(() => {
     // Check if it's already installed or running in standalone mode
@@ -70,24 +73,40 @@ export const InstallPWA = () => {
     }
   };
 
-  if (!isInstallable || isInstalled) {
+  const handleDismissClick = () => {
+    sessionStorage.setItem('pwa-install-dismissed', 'true');
+    setIsDismissed(true);
+  };
+
+  if (!isInstallable || isInstalled || isDismissed) {
     return null;
   }
 
   return (
-    <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50 animate-fade-in w-full max-w-sm px-4">
+    <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50 animate-fade-in w-full max-w-sm px-4" id="pwa-install-container">
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-indigo-100 dark:border-indigo-900/50 p-4 flex items-center gap-4">
         <div className="flex-1">
           <h4 className="text-sm font-bold text-gray-900 dark:text-white">অ্যাপটি ইনস্টল করুন / Install App</h4>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">সহজে ব্যবহারের জন্য হোমস্ক্রিনে শর্টকাট যোগ করুন / Add to homescreen for easier access.</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 font-sans">সহজে ব্যবহারের জন্য হোমস্ক্রিনে শর্টকাট যোগ করুন / Add to homescreen for easier access.</p>
         </div>
-        <button
-          onClick={handleInstallClick}
-          className="shrink-0 flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-medium transition-colors"
-        >
-          <Download size={16} />
-          <span>Install</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            id="pwa-install-btn"
+            onClick={handleInstallClick}
+            className="shrink-0 flex items-center gap-1.5 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-medium transition-colors"
+          >
+            <Download size={16} />
+            <span>Install</span>
+          </button>
+          <button
+            id="pwa-dismiss-btn"
+            onClick={handleDismissClick}
+            className="shrink-0 p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700"
+            title="Dismiss"
+          >
+            <X size={18} />
+          </button>
+        </div>
       </div>
     </div>
   );
